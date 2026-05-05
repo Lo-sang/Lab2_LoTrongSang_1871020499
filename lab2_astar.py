@@ -1,221 +1,193 @@
-from typing import List, Tuple, Dict
-import numpy as np
+from typing import Tuple, List
 import heapq
+import numpy as np
 import matplotlib.pyplot as plt
 
+Point = Tuple[int, int]
 
-Position = Tuple[int, int]
-
-
-def create_node(position: Position, g: float, h: float, parent=None) -> Dict:
-    return {
-        "position": position,
-        "g": g,
-        "h": h,
-        "f": g + h,
-        "parent": parent
-    }
+# Chi phí đi vào từng loại ô
+MOVE_COST = {
+    0: 1,   # đường thường
+    2: 3,   # bùn
+    3: 5    # đá
+}
 
 
-def calculate_heuristic(pos1: Position, pos2: Position) -> float:
-    """
-    Dùng khoảng cách Manhattan vì robot chỉ đi 4 hướng:
-    lên, xuống, trái, phải.
-    """
-    x1, y1 = pos1
-    x2, y2 = pos2
-    return abs(x1 - x2) + abs(y1 - y2)
+def manhattan(current: Point, target: Point) -> int:
+    """Tính khoảng cách Manhattan từ ô hiện tại tới đích."""
+    return abs(current[0] - target[0]) + abs(current[1] - target[1])
 
 
-def get_cell_cost(cell_value: int) -> int:
-    """
-    Quy định chi phí đi vào từng loại ô:
-    0: ô trống, chi phí 1
-    2: bùn lầy, chi phí 3
-    3: đá, chi phí 5
-    1: vật cản, không đi được
-    """
-    if cell_value == 0:
-        return 1
-    elif cell_value == 2:
-        return 3
-    elif cell_value == 3:
-        return 5
-    else:
-        return 999999
+def terrain_cost(value: int) -> int:
+    """Lấy chi phí tương ứng với loại địa hình."""
+    return MOVE_COST.get(value, 999999)
 
 
-def get_valid_neighbors(grid: np.ndarray, position: Position) -> List[Position]:
-    x, y = position
-    rows, cols = grid.shape
+def get_neighbors(warehouse: np.ndarray, cell: Point) -> List[Point]:
+    """Trả về các ô kề có thể đi được theo 4 hướng."""
+    row, col = cell
+    max_row, max_col = warehouse.shape
 
-    # Chỉ đi 4 hướng, không đi chéo
-    possible_moves = [
-        (x - 1, y),  # lên
-        (x + 1, y),  # xuống
-        (x, y - 1),  # trái
-        (x, y + 1)   # phải
+    directions = [
+        (-1, 0),  # lên
+        (1, 0),   # xuống
+        (0, -1),  # trái
+        (0, 1)    # phải
     ]
 
-    valid_neighbors = []
+    result = []
 
-    for nx, ny in possible_moves:
-        if 0 <= nx < rows and 0 <= ny < cols:
-            if grid[nx][ny] != 1:  # khác 1 nghĩa là không phải vật cản
-                valid_neighbors.append((nx, ny))
+    for dr, dc in directions:
+        nr = row + dr
+        nc = col + dc
 
-    return valid_neighbors
+        inside_map = 0 <= nr < max_row and 0 <= nc < max_col
+        if inside_map and warehouse[nr][nc] != 1:
+            result.append((nr, nc))
+
+    return result
 
 
-def reconstruct_path(goal_node: Dict) -> List[Position]:
+def build_path(parent: dict, start: Point, goal: Point) -> List[Point]:
+    """Dựng lại đường đi từ goal về start."""
     path = []
-    current = goal_node
+    current = goal
 
-    while current is not None:
-        path.append(current["position"])
-        current = current["parent"]
+    while current != start:
+        path.append(current)
+        current = parent[current]
 
-    return path[::-1]
+    path.append(start)
+    path.reverse()
+    return path
 
 
-def find_path(grid: np.ndarray, start: Position, goal: Position) -> List[Position]:
-    start_node = create_node(
-        position=start,
-        g=0,
-        h=calculate_heuristic(start, goal),
-        parent=None
-    )
+def astar_search(warehouse: np.ndarray, start: Point, goal: Point) -> List[Point]:
+    """
+    Tìm đường đi có tổng chi phí nhỏ nhất bằng thuật toán A*.
+    """
+    open_queue = []
+    heapq.heappush(open_queue, (0, start))
 
-    open_list = []
-    heapq.heappush(open_list, (start_node["f"], start))
+    parent = {}
+    g_score = {start: 0}
+    visited = set()
 
-    open_dict = {start: start_node}
-    closed_set = set()
+    while open_queue:
+        _, current = heapq.heappop(open_queue)
 
-    while open_list:
-        _, current_pos = heapq.heappop(open_list)
-
-        if current_pos in closed_set:
+        if current in visited:
             continue
 
-        current_node = open_dict[current_pos]
+        if current == goal:
+            return build_path(parent, start, goal)
 
-        if current_pos == goal:
-            return reconstruct_path(current_node)
+        visited.add(current)
 
-        closed_set.add(current_pos)
-
-        for neighbor_pos in get_valid_neighbors(grid, current_pos):
-            if neighbor_pos in closed_set:
+        for next_cell in get_neighbors(warehouse, current):
+            if next_cell in visited:
                 continue
 
-            nx, ny = neighbor_pos
-            move_cost = get_cell_cost(grid[nx][ny])
+            r, c = next_cell
+            new_cost = g_score[current] + terrain_cost(warehouse[r][c])
 
-            tentative_g = current_node["g"] + move_cost
+            if next_cell not in g_score or new_cost < g_score[next_cell]:
+                g_score[next_cell] = new_cost
+                parent[next_cell] = current
 
-            if neighbor_pos not in open_dict or tentative_g < open_dict[neighbor_pos]["g"]:
-                neighbor_node = create_node(
-                    position=neighbor_pos,
-                    g=tentative_g,
-                    h=calculate_heuristic(neighbor_pos, goal),
-                    parent=current_node
-                )
-
-                open_dict[neighbor_pos] = neighbor_node
-                heapq.heappush(open_list, (neighbor_node["f"], neighbor_pos))
+                f_score = new_cost + manhattan(next_cell, goal)
+                heapq.heappush(open_queue, (f_score, next_cell))
 
     return []
 
 
-def calculate_total_cost(grid: np.ndarray, path: List[Position]) -> int:
-    if not path:
-        return 0
+def path_cost(warehouse: np.ndarray, path: List[Point]) -> int:
+    """Tính tổng chi phí của đường đi."""
+    total = 0
 
-    total_cost = 0
+    for r, c in path[1:]:
+        total += terrain_cost(warehouse[r][c])
 
-    # Bỏ qua ô start, chỉ tính chi phí khi đi vào các ô sau
-    for x, y in path[1:]:
-        total_cost += get_cell_cost(grid[x][y])
-
-    return total_cost
+    return total
 
 
-def visualize_path(grid: np.ndarray, path: List[Position]) -> None:
-    grid_copy = np.copy(grid).astype(str)
+def print_map(warehouse: np.ndarray, path: List[Point], start: Point, goal: Point) -> None:
+    """In bản đồ ra màn hình console."""
+    display = warehouse.astype(str)
 
-    for x, y in path:
-        grid_copy[x][y] = "*"
+    for r, c in path:
+        display[r][c] = "*"
 
-    if path:
-        sx, sy = path[0]
-        gx, gy = path[-1]
-        grid_copy[sx][sy] = "S"
-        grid_copy[gx][gy] = "G"
+    display[start[0]][start[1]] = "S"
+    display[goal[0]][goal[1]] = "G"
 
-    print("\nBản đồ đường đi:")
-    for row in grid_copy:
+    print("\n===== BAN DO KHO HANG =====")
+    for row in display:
         print(" ".join(row))
 
 
-def plot_grid(grid: np.ndarray, path: List[Position]) -> None:
-    fig, ax = plt.subplots(figsize=(7, 7))
-
-    ax.imshow(grid, cmap="Greys", interpolation="none")
+def draw_result(warehouse: np.ndarray, path: List[Point], start: Point, goal: Point) -> None:
+    """Vẽ bản đồ và đường đi bằng matplotlib."""
+    plt.figure(figsize=(7, 7))
+    plt.imshow(warehouse, cmap="gray_r")
 
     if path:
-        path_x = [p[1] for p in path]
-        path_y = [p[0] for p in path]
+        x = [p[1] for p in path]
+        y = [p[0] for p in path]
+        plt.plot(x, y, marker="o", linewidth=2, label="Duong di")
 
-        ax.plot(path_x, path_y, marker="o", linewidth=2, label="Path")
+    plt.scatter(start[1], start[0], marker="s", s=120, label="Start")
+    plt.scatter(goal[1], goal[0], marker="s", s=120, label="Goal")
 
-        start = path[0]
-        goal = path[-1]
-
-        ax.plot(start[1], start[0], marker="s", markersize=10, label="Start")
-        ax.plot(goal[1], goal[0], marker="s", markersize=10, label="Goal")
-
-    ax.set_title("Duong di toi uu bang thuat toan A*")
-    ax.legend()
-    ax.grid(True)
+    plt.title("Tim duong cho robot bang thuat toan A*")
+    plt.legend()
+    plt.grid(True)
     plt.show()
 
 
+def create_warehouse() -> np.ndarray:
+    """Tạo bản đồ kho hàng riêng."""
+    warehouse = np.zeros((20, 20), dtype=int)
+
+    # Vật cản
+    warehouse[4:16, 8] = 1
+    warehouse[10, 3:13] = 1
+    warehouse[2:9, 15] = 1
+
+    # Bùn lầy
+    warehouse[3:7, 4] = 2
+    warehouse[12:18, 6] = 2
+    warehouse[6, 10:14] = 2
+
+    # Đá
+    warehouse[14, 10:17] = 3
+    warehouse[7:12, 17] = 3
+    warehouse[16:19, 12] = 3
+
+    return warehouse
+
+
 def main():
-    # Tạo lưới 20x20
-    grid = np.zeros((20, 20), dtype=int)
+    warehouse = create_warehouse()
 
-    # Thêm vật cản
-    grid[5:15, 10] = 1
-    grid[5, 5:15] = 1
+    start = (1, 1)
+    goal = (18, 18)
 
-    # Thêm bùn lầy
-    grid[3:8, 3] = 2
-    grid[10:15, 7] = 2
-    grid[12, 12:17] = 2
+    path = astar_search(warehouse, start, goal)
 
-    # Thêm đá
-    grid[8:12, 13] = 3
-    grid[15, 4:10] = 3
-    grid[16:19, 15] = 3
+    if not path:
+        print("Khong tim thay duong di phu hop!")
+        return
 
-    start_pos = (2, 2)
-    goal_pos = (18, 18)
+    total = path_cost(warehouse, path)
 
-    path = find_path(grid, start_pos, goal_pos)
+    print("Da tim thay duong di bang A*")
+    print("So o di qua:", len(path))
+    print("Tong chi phi:", total)
+    print("Duong di:", path)
 
-    if path:
-        total_cost = calculate_total_cost(grid, path)
-
-        print("Tìm thấy đường đi!")
-        print("Số ô trong đường đi:", len(path))
-        print("Tổng chi phí:", total_cost)
-        print("Đường đi:", path)
-
-        visualize_path(grid, path)
-        plot_grid(grid, path)
-    else:
-        print("Không tìm thấy đường đi!")
+    print_map(warehouse, path, start, goal)
+    draw_result(warehouse, path, start, goal)
 
 
 if __name__ == "__main__":

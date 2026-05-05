@@ -61,13 +61,16 @@ Cập nhật đường đi nếu tìm được đường tốt hơn.
 Lặp lại cho đến khi đến đích hoặc không còn đường đi.
 
 ## 5. Các hàm chính
-calculate_heuristic(): tính khoảng cách Manhattan đến đích.
-get_cell_cost(): trả về chi phí của từng loại ô.
-get_valid_neighbors(): lấy các ô có thể đi tiếp.
-find_path(): cài đặt thuật toán A*.
-reconstruct_path(): truy vết lại đường đi.
-visualize_path(): in đường đi ra màn hình.
-plot_grid(): vẽ đường đi bằng biểu đồ.
+
+- `manhattan()`: tính khoảng cách Manhattan từ ô hiện tại đến đích.
+- `terrain_cost()`: lấy chi phí di chuyển theo từng loại địa hình.
+- `get_neighbors()`: tìm các ô lân cận hợp lệ theo 4 hướng.
+- `astar_search()`: cài đặt thuật toán A*.
+- `build_path()`: truy vết lại đường đi từ đích về điểm bắt đầu.
+- `path_cost()`: tính tổng chi phí của đường đi.
+- `print_map()`: in bản đồ kết quả ra màn hình.
+- `draw_result()`: vẽ đường đi bằng thư viện matplotlib.
+- `create_warehouse()`: tạo bản đồ kho hàng mẫu.
 
 ## 6. Kết quả
 
