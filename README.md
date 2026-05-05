@@ -92,8 +92,12 @@ G	        Điểm đích
 2	        Bùn lầy
 3	        Đá
 
-## Hình ảnh kết quả
+### Hình ảnh kết quả
 
-![Kết quả chạy chương trình](image.png)
+#### Kết quả chạy chương trình
 
-![Biểu đồ đường đi](image-1.png)
+![Kết quả chạy chương trình](image-2.png)
+
+#### Biểu đồ đường đi
+
+![Biểu đồ đường đi](image-3.png)
