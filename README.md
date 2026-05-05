@@ -44,8 +44,11 @@ f(n): tổng chi phí dùng để chọn ô đi tiếp.
 Vì robot chỉ đi 4 hướng nên chương trình dùng khoảng cách Manhattan:
 
 h(n) = |x1 - x2| + |y1 - y2|
+```
 
-4. Cách hoạt động
+---
+
+## 4. Cách hoạt động
 
 Chương trình thực hiện các bước chính:
 
@@ -57,7 +60,7 @@ Tính chi phí khi đi vào từng loại ô.
 Cập nhật đường đi nếu tìm được đường tốt hơn.
 Lặp lại cho đến khi đến đích hoặc không còn đường đi.
 
-5. Các hàm chính
+## 5. Các hàm chính
 calculate_heuristic(): tính khoảng cách Manhattan đến đích.
 get_cell_cost(): trả về chi phí của từng loại ô.
 get_valid_neighbors(): lấy các ô có thể đi tiếp.
@@ -66,7 +69,7 @@ reconstruct_path(): truy vết lại đường đi.
 visualize_path(): in đường đi ra màn hình.
 plot_grid(): vẽ đường đi bằng biểu đồ.
 
-6. Kết quả
+## 6. Kết quả
 
 Chương trình sẽ hiển thị:
 
@@ -86,6 +89,8 @@ G	        Điểm đích
 2	        Bùn lầy
 3	        Đá
 
-![alt text](image.png)
+## Hình ảnh kết quả
 
-![alt text](image-1.png)
+![Kết quả chạy chương trình](image.png)
+
+![Biểu đồ đường đi](image-1.png)
